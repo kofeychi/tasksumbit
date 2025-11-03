@@ -121,7 +121,7 @@
     let [replyip,replyport] = [null,null]
     let justip = false
     if(d != null){
-        if(d.contains(":")) {
+        if(d.includes(":")) {
             let da = d.split(':');
             replyip = da[0];
             replyport = da[1];
