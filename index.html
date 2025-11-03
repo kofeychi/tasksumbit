@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task submit</title>
+</head>
+<body>
+<script src="https://telegram.org/js/telegram-web-app.js?59"></script>
+<script type="text/tsx" src="Telegram.ts"></script>
+
+<div>
+    <h1>Task submit</h1>
+    <form id="taskform">
+        <label for="taskid">Task ID:</label><br>
+        <input type="text" id="taskid" name="task id"><br>
+        <label for="taskname">Task name:</label><br>
+        <input type="text" id="taskname" name="task name"><br>
+        <label for="groupp">Group:</label><br>
+        <input list="group" id="groupp" name="group"><br>
+        <datalist id="group">
+            <!-- Options will be dynamically inserted here -->
+        </datalist>
+        <br>
+        <input type="submit" value="Submit">
+    </form>
+</div>
+
+<script>
+    // functs
+    function insertGroupsIntoForm(groups) {
+        const datalist = document.getElementById('group');
+        groups.forEach(obj => {
+            const option = document.createElement('option');
+            option.value = obj;
+            datalist.appendChild(option);
+        });
+    }
+
+    function executeIfNonNull(obj,func) {
+        if(obj != null){
+            func()
+        }
+    }
+
+    function sendAndReceivePostTo(target,body,optdata = {}) {
+        return (async () => {
+            const rawResponse = await fetch(target, {
+                ...{
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                    },
+                    body: body
+                },
+                ...optdata
+            });
+            return await rawResponse.json();
+        })();
+    }
+
+    function sendPostTo(target,body,optdata = {}) {
+        (async () => {
+            await fetch(target, {
+                ...{
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                    },
+                    body: body
+                },
+                ...optdata
+            });
+        })();
+    }
+
+    function sendGetTo(target,optdata = {}) {
+        return (async () => {
+            return await (await fetch(target, {
+                ...{
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                    }
+                },
+                ...optdata
+            })).json();
+        })();
+    }
+
+    function checkServerStatus(target) {
+        (async () => {
+            let r = await sendGetTo(target + "/api/ping",{})
+            if(r!=null) {
+                console.log("Server is available.");
+            } else {
+                console.error("Server is unavailable.");
+            }
+        })()
+    }
+
+    const params = new URLSearchParams(document.location.search);
+    let d = null
+    params.forEach((v,k) => {
+        if(k === "replydata") {
+            d = v;
+        }
+    })
+    let [replyip,replyport] = [null,null]
+    if(d != null){
+        let da = d.split(':');
+        replyip = da[0];
+        replyport = da[1];
+        console.log("Reply data found.");
+        console.log(replyip,replyport);
+    } else {
+        console.error("Reply data not found.");
+    }
+    let replytarget = "http://"+replyip+":"+replyport;
+
+    checkServerStatus(replytarget);
+
+
+    document.querySelector('form').addEventListener('submit', e => {
+        e.preventDefault();
+        const data = new FormData(e.target);
+        console.log([...data.entries()]);
+        sendPostTo(replytarget+"/api/task", JSON.stringify({formdata: [...data.entries()]}),null);
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const tg = window.Telegram.WebApp;
+
+        if (replyip == null || replyport == null) {
+            console.error("ReplyIP not provided.");
+            return;
+        }
+
+        if (!tg) {
+            console.error("Telegram Web App script not loaded.");
+            return;
+        }
+        console.log("Telegram Web App script loaded.");
+
+        tg.ready();
+
+        const groups = JSON.parse(await sendGetTo(replytarget + "/api/group", {}))
+
+        insertGroupsIntoForm(groups);
+    });
+</script>
+</body>
+</html>
